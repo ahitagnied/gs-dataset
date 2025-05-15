@@ -1,0 +1,21 @@
+output:
+  directory: "output"
+  format: "PNG"
+  resolution: [1024, 1024]
+  samples: 128
+
+cube:
+  size: 2
+  location: [0, 0, 0]
+  material:
+    metallic: 1.0
+    roughness: 0.0
+    specular: 1.0
+
+environment:
+  hdri_path: "assets/paris.exr" 
+
+camera:
+  num_images: 36
+  distance: 5.0
+  vertical_movement: 2.0
