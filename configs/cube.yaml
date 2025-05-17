@@ -16,6 +16,6 @@ environment:
   hdri_path: "assets/paris.exr" 
 
 camera:
-  num_images: 36
+  num_images: 300
   distance: 5.0
   vertical_movement: 2.0
