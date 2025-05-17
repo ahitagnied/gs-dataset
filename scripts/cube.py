@@ -24,6 +24,7 @@ def setup_scene(config):
     bpy.context.scene.render.resolution_y = resolution[1]
     bpy.context.scene.render.image_settings.file_format = config["output"]["format"]
     bpy.context.scene.cycles.samples = config["output"]["samples"]
+    bpy.context.scene.render.film_transparent = True # <-- make background transparent like NeRO
 
 def create_cube(config):
     """create a shiny cube based on config"""
@@ -194,7 +195,7 @@ def render_cube(config, train_ratio=0.8):
             })
         
         # render image
-        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{i:03d}.png")
+        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{i+1}.png")
         bpy.ops.render.render(write_still=True)
     
     # create transform json files
