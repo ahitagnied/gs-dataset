@@ -13,17 +13,17 @@ def main():
     config_path = os.path.join(current_dir, "configs", "cube.yaml")
     
     # print status for debugging
-    print(f"Looking for config at: {config_path}")
+    print(f"looking for config at: {config_path}")
     if os.path.exists(config_path):
-        print("Config file found!")
+        print("config file found!")
     else:
-        print("Config file NOT found!")
+        print("config file NOT found!")
     
     # load the config
     config = load_config(config_path)
     
-    # render the cube
-    render_cube(config, "cube")
+    # render the cube directly to train and test folders
+    render_cube(config, train_ratio=0.8)
 
 if __name__ == "__main__":
     main()
