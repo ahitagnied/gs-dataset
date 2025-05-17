@@ -1,7 +1,8 @@
 import bpy
 import math
 import os
-from mathutils import Vector
+import json
+from mathutils import Vector, Matrix
 import yaml
 
 def load_config(config_path):
@@ -106,59 +107,133 @@ def setup_environment(config):
     world_links.new(env_tex.outputs['Color'], background.inputs['Color'])
     world_links.new(background.outputs['Background'], world_output.inputs['Surface'])
 
-def render_cube(config, output_subfolder="cube"):
-    """render the cube from multiple angles"""
-    # ensure output directory exists
-    output_dir = os.path.join(config["output"]["directory"], output_subfolder)
-    os.makedirs(output_dir, exist_ok=True)
+def render_cube(config, train_ratio=0.8):
+    """render objects and save to train and test folders based on script name"""
+    # get script name for folder name
+    import inspect
+    folder_name = os.path.splitext(os.path.basename(inspect.getfile(inspect.currentframe())))[0]
     
-    # setup scene
+    # setup directories
+    output_dir = config["output"]["directory"]
+    object_dir = os.path.join(output_dir, folder_name)
+    train_dir = os.path.join(object_dir, "train")
+    test_dir = os.path.join(object_dir, "test")
+    
+    os.makedirs(object_dir, exist_ok=True)
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
+    
+    # setup scene and camera
     setup_scene(config)
-    
-    # create cube
     cube = create_cube(config)
-    
-    # setup environment
     setup_environment(config)
     
-    # set up camera
     bpy.ops.object.camera_add()
     camera = bpy.context.active_object
     camera.location = (5, 0, 0)
     camera.rotation_euler = (math.pi/2, 0, math.pi/2)
-
-    # make camera active
     bpy.context.scene.camera = camera
-
-    # create a target for the camera to point at
+    
+    # calculate camera parameters
+    camera_data = camera.data
+    aspect_ratio = config["output"]["resolution"][0] / config["output"]["resolution"][1]
+    camera_angle_x = 2 * math.atan(math.tan(camera_data.angle / 2) * aspect_ratio)
     target = Vector(tuple(config["cube"]["location"]))
 
-    # render multiple views around the cube
+    # render settings
     num_images = config["camera"]["num_images"]
     distance = config["camera"]["distance"]
     vertical_movement = config["camera"]["vertical_movement"]
-
-    print(f"rendering {num_images} cube images to {output_dir}")
+    num_train = math.floor(num_images * train_ratio)
+    
+    print(f"rendering {num_train} train images and {num_images - num_train} test images")
+    
+    train_camera_params = []
+    test_camera_params = []
     
     for i in range(num_images):
-        # calculate camera position on a circle
+        # set camera position
         angle = (2.0 * math.pi * i) / num_images
+        rotation_step = 0.031415926535897934
+        
         x = distance * math.cos(angle)
         y = distance * math.sin(angle)
         z = vertical_movement * math.sin(angle/2)
         
         camera.location = (x, y, z)
         
-        # point camera at the cube
+        # aim camera at target
         direction = target - camera.location
         rot_quat = direction.to_track_quat('-Z', 'Y')
         camera.rotation_euler = rot_quat.to_euler()
         
-        # render and save the image
-        bpy.context.scene.render.filepath = f"{output_dir}/cube_{i:03d}.png"
+        # get transform matrix
+        camera_to_world = camera.matrix_world.copy()
+        transform_matrix = [list(row) for row in camera_to_world]
+            
+        # save to train or test
+        is_train = i < num_train
+        
+        if is_train:
+            current_dir = train_dir
+            file_path = f"./train/r_{i}"
+            train_camera_params.append({
+                "file_path": file_path,
+                "rotation": rotation_step,
+                "transform_matrix": transform_matrix,
+                "camera_angle_x": camera_angle_x
+            })
+        else:
+            current_dir = test_dir
+            file_path = f"./test/r_{i}"
+            test_camera_params.append({
+                "file_path": file_path,
+                "rotation": rotation_step,
+                "transform_matrix": transform_matrix,
+                "camera_angle_x": camera_angle_x
+            })
+        
+        # render image
+        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{i:03d}.png")
         bpy.ops.render.render(write_still=True)
     
-    print(f"finished rendering {num_images} cube images")
+    # create transform json files
+    create_transform_json(config, train_camera_params, "transforms_train.json", folder_name)
+    create_transform_json(config, test_camera_params, "transforms_test.json", folder_name)
+    
+    print(f"finished rendering {num_images} images")
+
+def create_transform_json(config, camera_params, output_filename, folder_name):
+    """create transform.json file in nero dataset format"""
+    if not camera_params:
+        print(f"warning: no camera parameters for {output_filename}")
+        return
+        
+    # setup output directory
+    output_dir = config["output"]["directory"]
+    object_dir = os.path.join(output_dir, folder_name)
+    
+    # create transform data
+    transform_data = {
+        "camera_angle_x": camera_params[0]["camera_angle_x"],
+        "frames": []
+    }
+    
+    # add frames data
+    for params in camera_params:
+        frame_data = {
+            "file_path": params["file_path"],
+            "rotation": params["rotation"],
+            "transform_matrix": params["transform_matrix"]
+        }
+        transform_data["frames"].append(frame_data)
+    
+    # save json file
+    transform_json_path = os.path.join(object_dir, output_filename)
+    with open(transform_json_path, "w") as f:
+        json.dump(transform_data, f, indent=4)
+    
+    print(f"saved {output_filename} to {transform_json_path}")
 
 if __name__ == "__main__":
     # when run directly, load config and render
