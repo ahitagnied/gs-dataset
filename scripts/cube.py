@@ -108,7 +108,7 @@ def setup_environment(config):
     world_links.new(env_tex.outputs['Color'], background.inputs['Color'])
     world_links.new(background.outputs['Background'], world_output.inputs['Surface'])
 
-def render_cube(config, train_ratio=0.8):
+def render_cube(config, train_ratio):
     """render objects and save to train and test folders based on script name"""
     # get script name for folder name
     import inspect
@@ -177,6 +177,7 @@ def render_cube(config, train_ratio=0.8):
         
         if is_train:
             current_dir = train_dir
+            img_index = i
             file_path = f"./train/r_{i}"
             train_camera_params.append({
                 "file_path": file_path,
@@ -186,16 +187,17 @@ def render_cube(config, train_ratio=0.8):
             })
         else:
             current_dir = test_dir
-            file_path = f"./test/r_{i}"
+            img_index = i - num_train
+            file_path = f"./test/r_{img_index}"
             test_camera_params.append({
                 "file_path": file_path,
                 "rotation": rotation_step,
                 "transform_matrix": transform_matrix,
                 "camera_angle_x": camera_angle_x
             })
-        
+
         # render image
-        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{i+1}.png")
+        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{img_index}.png")
         bpy.ops.render.render(write_still=True)
     
     # create transform json files

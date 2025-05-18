@@ -23,7 +23,7 @@ def main():
     config = load_config(config_path)
     
     # render the cube directly to train and test folders
-    render_cube(config, train_ratio=0.8)
+    render_cube(config, train_ratio=0.33)
 
 if __name__ == "__main__":
     main()
