@@ -4,6 +4,7 @@ import os
 import json
 from mathutils import Vector, Matrix
 import yaml
+import inspect
 
 def load_config(config_path):
     """load configuration from yaml file"""
@@ -77,7 +78,7 @@ def setup_environment(config):
     """set up the hdri environment"""
     # add hdri environment map
     if bpy.context.scene.world is None:
-        # Create a new world if it doesn't exist
+        # create a new world if it doesn't exist
         world = bpy.data.worlds.new("World")
         bpy.context.scene.world = world
     else:
@@ -111,7 +112,6 @@ def setup_environment(config):
 def render_cube(config, train_ratio):
     """render objects and save to train and test folders based on script name"""
     # get script name for folder name
-    import inspect
     folder_name = os.path.splitext(os.path.basename(inspect.getfile(inspect.currentframe())))[0]
     
     # setup directories
@@ -137,74 +137,91 @@ def render_cube(config, train_ratio):
     
     # calculate camera parameters
     camera_data = camera.data
-    aspect_ratio = config["output"]["resolution"][0] / config["output"]["resolution"][1]
-    camera_angle_x = 2 * math.atan(math.tan(camera_data.angle / 2) * aspect_ratio)
+    # aspect_ratio = config["output"]["resolution"][0] / config["output"]["resolution"][1]
+    camera_angle_x = camera_data.angle_x
     target = Vector(tuple(config["cube"]["location"]))
 
     # render settings
     num_images = config["camera"]["num_images"]
     distance = config["camera"]["distance"]
-    vertical_movement = config["camera"]["vertical_movement"]
-    num_train = math.floor(num_images * train_ratio)
-    
+    num_train = math.floor(num_images * train_ratio) # <-- num images in train set
+    stride = round(num_images / num_train) 
     print(f"rendering {num_train} train images and {num_images - num_train} test images")
     
     train_camera_params = []
     test_camera_params = []
     
-    for i in range(num_images):
-        # set camera position
-        angle = (2.0 * math.pi * i) / num_images
-        rotation_step = 0.031415926535897934
-        
-        x = distance * math.cos(angle)
-        y = distance * math.sin(angle)
-        z = vertical_movement * math.sin(angle/2)
-        
-        camera.location = (x, y, z)
-        
-        # aim camera at target
-        direction = target - camera.location
-        rot_quat = direction.to_track_quat('-Z', 'Y')
-        camera.rotation_euler = rot_quat.to_euler()
-        
-        # get transform matrix
-        camera_to_world = camera.matrix_world.copy()
-        transform_matrix = [list(row) for row in camera_to_world]
-            
-        # save to train or test
-        is_train = i < num_train
-        
-        if is_train:
-            current_dir = train_dir
-            img_index = i
-            file_path = f"./train/r_{i}"
-            train_camera_params.append({
-                "file_path": file_path,
-                "rotation": rotation_step,
-                "transform_matrix": transform_matrix,
-                "camera_angle_x": camera_angle_x
-            })
-        else:
-            current_dir = test_dir
-            img_index = i - num_train
-            file_path = f"./test/r_{img_index}"
-            test_camera_params.append({
-                "file_path": file_path,
-                "rotation": rotation_step,
-                "transform_matrix": transform_matrix,
-                "camera_angle_x": camera_angle_x
-            })
+    ntrain = 0
+    ntest = 0
+    
+    elevation_angles = config["camera"]["elevation_angles"]
 
-        # render image
-        bpy.context.scene.render.filepath = os.path.join(current_dir, f"r_{img_index}.png")
-        bpy.ops.render.render(write_still=True)
+    for elevation_angle in elevation_angles:
+        for image in range(num_images):
+            # set camera position
+            angle = (2.0 * math.pi * image) / num_images
+            elevation_angle_rad = math.radians(elevation_angle)
+
+            rotation_step = math.pi/ 100
+            
+            r_h = distance * math.cos(elevation_angle_rad)
+
+            x = r_h * math.cos(angle)
+            y = r_h * math.sin(angle)
+            z = distance * math.sin(elevation_angle_rad)
+            
+            camera.location = (x, y, z)
+            
+            # aim camera at target
+            direction = target - camera.location
+            rot_quat = direction.to_track_quat('-Z', 'Y')
+            camera.rotation_euler = rot_quat.to_euler()
+            
+            # get transform matrix
+            camera_to_world = camera.matrix_world.copy()
+            transform_matrix = [list(row) for row in camera_to_world]
+                
+            # save to train or test
+            is_train = (image % stride == 0)
+
+            if is_train:
+                filename = f"r_{ntrain}"
+                current_dir = train_dir
+                # save camera parameters
+                file_path = f"./train/r_{ntrain}"
+                train_camera_params.append({
+                    "file_path": file_path,
+                    "rotation": rotation_step,
+                    "transform_matrix": transform_matrix,
+                    "camera_angle_x": camera_angle_x
+                })
+
+                # avoid duplicate file names
+                ntrain += 1
+            else:
+                filename = f"r_{ntest}"
+                current_dir = test_dir
+                # save camera parameters
+                file_path = f"./test/r_{ntest}"
+                test_camera_params.append({
+                    "file_path": file_path,
+                    "rotation": rotation_step,
+                    "transform_matrix": transform_matrix,
+                    "camera_angle_x": camera_angle_x
+                })
+
+                # avoid duplicate file names
+                ntest += 1
+
+            # render image
+            bpy.context.scene.render.filepath = os.path.join(current_dir, f"{filename}.png")
+            bpy.ops.render.render(write_still=True)
     
     # create transform json files
     create_transform_json(config, train_camera_params, "transforms_train.json", folder_name)
     create_transform_json(config, test_camera_params, "transforms_test.json", folder_name)
     
-    print(f"finished rendering {num_images} images")
+    print(f"finished rendering {num_images * len(elevation_angles)} images")
 
 def create_transform_json(config, camera_params, output_filename, folder_name):
     """create transform.json file in nero dataset format"""
@@ -242,4 +259,4 @@ if __name__ == "__main__":
     # when run directly, load config and render
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "cube.yaml")
     config = load_config(config_path)
-    render_cube(config)
+    render_cube(config, train_ratio=0.33)
