@@ -5,6 +5,7 @@ import json
 from mathutils import Vector, Matrix
 import yaml
 import inspect
+import random
 
 def load_config(config_path):
     """load configuration from yaml file"""
@@ -160,16 +161,22 @@ def render_cube(config, train_ratio):
         for image in range(num_images):
             # set camera position
             angle = (2.0 * math.pi * image) / num_images
-            elevation_angle_rad = math.radians(elevation_angle)
+
+            #------------------------------------------------------------------------
+            # add jitter to angle
+            jitter_elevation_angle = elevation_angle + random.uniform(-3, 3)
+            elevation_angle_rad = math.radians(jitter_elevation_angle)
 
             rotation_step = math.pi/ 100
             
-            r_h = distance * math.cos(elevation_angle_rad)
+            # add jitter to rotation step
+            jitter_distance = distance  * random.uniform(0.95, 1.05)
+            r_h = jitter_distance * math.cos(elevation_angle_rad)
 
             x = r_h * math.cos(angle)
             y = r_h * math.sin(angle)
-            z = distance * math.sin(elevation_angle_rad)
-            
+            z = jitter_distance * math.sin(elevation_angle_rad)
+            #------------------------------------------------------------------------
             camera.location = (x, y, z)
             
             # aim camera at target
