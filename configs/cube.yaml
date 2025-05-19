@@ -1,7 +1,7 @@
 output:
   directory: "output"
   format: "PNG"
-  resolution: [1024, 1024]
+  resolution: [800, 800]
   samples: 128
 
 cube:
@@ -16,6 +16,6 @@ environment:
   hdri_path: "assets/paris.exr" 
 
 camera:
-  num_images: 300
+  num_images: 60
   distance: 5.0
-  vertical_movement: 2.0
+  elevation_angles: [-60, -30, 0, 30, 60]
