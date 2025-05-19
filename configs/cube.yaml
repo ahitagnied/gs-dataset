@@ -9,7 +9,7 @@ cube:
   location: [0, 0, 0]
   material:
     metallic: 1.0
-    roughness: 0.0
+    roughness: 0.04
     specular: 1.0
 
 environment:
