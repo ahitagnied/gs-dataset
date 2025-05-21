@@ -36,6 +36,16 @@ def create_cube(config):
     bpy.ops.mesh.primitive_cube_add(size=size, location=tuple(location))
     cube = bpy.context.active_object
 
+    # ─── add bevel modifier to round corners ──────────────────────────────────
+    bevel_mod = cube.modifiers.new(name="Bevel", type='BEVEL')
+    bevel_mod.width    = config["cube"]["bevel_width"]    # how far the bevel goes
+    bevel_mod.segments = config["cube"]["bevel_segments"] # how smooth it is
+    bevel_mod.profile  = config["cube"]["bevel_profile"]  # profile curve (0.5 is circular)
+    # apply it so the mesh actually gets those rounded verts
+    bpy.context.view_layer.objects.active = cube
+    bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
+    # ───────────────────────────────────────────────────────────────────────────
+
     # create a shiny material for the cube
     material = bpy.data.materials.new("ShinyMaterial")
     material.use_nodes = True
@@ -164,18 +174,18 @@ def render_cube(config, train_ratio):
 
             #------------------------------------------------------------------------
             # add jitter to angle
-            jitter_elevation_angle = elevation_angle + random.uniform(-3, 3)
+            jitter_elevation_angle = elevation_angle + random.uniform(-2, 2)
             elevation_angle_rad = math.radians(jitter_elevation_angle)
 
             rotation_step = math.pi/ 100
             
             # add jitter to rotation step
-            jitter_distance = distance  * random.uniform(0.95, 1.05)
-            r_h = jitter_distance * math.cos(elevation_angle_rad)
+            # jitter_distance = distance  * random.uniform(0.95, 1.05)
+            r_h = distance * math.cos(elevation_angle_rad)
 
             x = r_h * math.cos(angle)
             y = r_h * math.sin(angle)
-            z = jitter_distance * math.sin(elevation_angle_rad)
+            z = distance * math.sin(elevation_angle_rad)
             #------------------------------------------------------------------------
             camera.location = (x, y, z)
             
