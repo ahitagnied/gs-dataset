@@ -7,15 +7,18 @@ output:
 cube:
   size: 2
   location: [0, 0, 0]
+  bevel_width:    0.3
+  bevel_segments: 100 # <-- higher = smoother
+  bevel_profile:  0.5 # 0.5 = round, 0.0 = square
   material:
     metallic: 1.0
-    roughness: 0.04
+    roughness: 0.02
     specular: 1.0
 
 environment:
-  hdri_path: "assets/paris.exr" 
+  hdri_path: "assets/paris.exr"
 
 camera:
-  num_images: 60
+  num_images: 50
   distance: 5.0
-  elevation_angles: [-60, -30, 0, 30, 60]
+  elevation_angles: [0, 15, 30, 45, 60, 75]
