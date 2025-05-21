@@ -174,14 +174,14 @@ def render_cube(config, train_ratio):
 
     for i in range(num_images):
         # pick out this frame's elevation and azimuth
-        θ = thetas[i]
-        φ = phis[i]
+        theta = thetas[i]
+        phi = phis[i]
 
-        # spherical → cartesian
+        # spherical --> cartesian
         r = distance
-        z_cam = r * np.cos(θ)
-        x = r * np.sin(θ) * np.cos(φ)
-        y = r * np.sin(θ) * np.sin(φ)
+        z_cam = r * np.cos(theta)
+        x = r * np.sin(theta) * np.cos(phi)
+        y = r * np.sin(theta) * np.sin(phi)
 
         camera.location = (x, y, z_cam)
 
