@@ -6,11 +6,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
 
-from scripts.cube import load_config, render_cube
+from scripts.distorted_cube import load_config, render_cube
 
 def main():
     # get the absolute path to the config file
-    config_path = os.path.join(current_dir, "configs", "cube.yaml")
+    config_path = os.path.join(current_dir, "configs", "distorted_cube.yaml")
     
     # print status for debugging
     print(f"looking for config at: {config_path}")
